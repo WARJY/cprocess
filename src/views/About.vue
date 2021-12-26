@@ -8,6 +8,7 @@
 
 <script>
 import { Graph, Node, Edge, Shape, Addon } from '@antv/x6'
+import { debounce } from 'lodash'
 import data from './data.js'
 
 export default {
@@ -291,38 +292,59 @@ export default {
                     enabled: true,
                 },
             })
+            graph.on('node:change:position', debounce(data => {
+                if (!data.node._parent) return
+                console.log(data)
+                let parent = data.node._parent
+                if (parent.data.rePosition === true) {
+                    let parentSize = parent.size()
+                    let parentPosition = parent.position()
+                    parent._children.sort((a, b) => {
+                        let aY = a.position().y
+                        let bY = b.position().y
+                        return aY - bY
+                    }).forEach((child, index) => {
+                        let childSize = child.size()
+                        let childX = parentPosition.x + (parentSize.width - childSize.width) / 2
+                        let childYPer = (parentSize.height - (childSize.height * parent._children.length)) / (parent._children.length + 1)
+                        child.position(childX, parentPosition.y + (childYPer + childSize.height) * index + childYPer)
+                    })
+                }
+            }, 500))
             this.graph = graph
-
-            const child = graph.addNode({
-                x: 120,
-                y: 80,
-                width: 120,
-                height: 60,
-                zIndex: 10,
-                label: 'Child\n(embedded)',
-                attrs: {
-                    body: {
-                        fill: 'green',
-                    },
-                    label: {
-                        fill: '#fff',
-                    },
-                },
-            })
 
             const parent = graph.addNode({
                 x: 80,
                 y: 40,
                 width: 320,
-                height: 240,
+                height: 300,
                 zIndex: 1,
-                label: 'Parent',
                 data: {
-                    parent: true
+                    parent: true,
+                    rePosition: true
                 }
             })
 
-            parent.addChild(child)
+            new Array(3).fill(0).forEach((item, index) => {
+                const child = graph.addNode({
+                    x: 120,
+                    y: 80 * (index + 1),
+                    width: 220,
+                    height: 60,
+                    zIndex: 10,
+                    label: `Child\n(${index})`,
+                    attrs: {
+                        body: {
+                            fill: 'green',
+                        },
+                        label: {
+                            fill: '#fff',
+                        },
+                    }
+                })
+                parent.addChild(child)
+            })
+
         },
         addItem() {
             const child = this.graph.addNode({

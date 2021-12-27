@@ -94,10 +94,13 @@ export default {
                 selecting: {
                     enabled: true,
                     rubberband: true,
-                    showNodeSelectionBox: true,
                     strict: true
                 },
                 connecting: {
+                    snap: true,
+                    allowBlank: false,
+                    allowLoop: false,
+                    allowNode: false,
                     anchor: 'orth',
                     connector: 'rounded',
                     connectionPoint: 'boundary',
@@ -107,6 +110,19 @@ export default {
                             offset: 24,
                             direction: 'H',
                         },
+                    },
+                    validateConnection({ sourceMagnet, targetMagnet }) {
+                        // 只能从输出链接桩创建连接
+                        if (!sourceMagnet || sourceMagnet.getAttribute('port-group') === 'in') {
+                            return false
+                        }
+
+                        // 只能连接到输入链接桩
+                        if (!targetMagnet || targetMagnet.getAttribute('port-group') !== 'in') {
+                            return false
+                        }
+
+                        return true
                     },
                 },
                 history: {
@@ -127,14 +143,54 @@ export default {
                         })
                     }
                 },
-                resizing: {
-                    enabled: true,
-                },
             })
             this.graph = graph
 
             graph.on('node:collapse', ({ node, vm }) => {
                 vm.collapsed = true
+            })
+
+            graph.on('edge:mouseenter', ({ cell }) => {
+                cell.addTools([
+                    {
+                        name: 'source-arrowhead',
+                    },
+                    {
+                        name: 'button-remove',
+                    },
+                    {
+                        name: 'target-arrowhead',
+                        args: {
+                            attrs: {
+                                fill: 'red',
+                            },
+                        },
+                    },
+                ])
+            })
+
+            graph.on('edge:mouseleave', ({ cell }) => {
+                cell.removeTools()
+            })
+
+            graph.on('node:selected', ({ cell }) => {
+                cell.addTools([
+                    { name: "boundary" },
+                    {
+                        name: 'button-remove',
+                        args: {
+                            x: "100%",
+                            offset: {
+                                x: 10,
+                                y: -10
+                            }
+                        },
+                    }
+                ])
+            })
+
+            graph.on('node:unselected', ({ cell }) => {
+                cell.removeTools()
             })
         },
         setData(data) {

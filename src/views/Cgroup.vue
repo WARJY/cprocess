@@ -1,6 +1,6 @@
 <template>
     <div class="group-container">
-        <span class="title">第{{index}}批：</span>
+        <!-- <span class="title">第{{index}}批：</span> -->
         <!-- <collapse class="icon-collapse" :collapsed="collapsed" @collapse="handleCollapse" /> -->
     </div>
 </template>
@@ -24,11 +24,11 @@ export default {
     computed: {
         /* COMPUTED APPEND FLAG, dont del this line */
     },
-    mounted(){
+    mounted() {
         this.init()
     },
     methods: {
-        init(){
+        init() {
             let node = this.getNode()
             this.index = node.data.batchIndex
         },
@@ -48,9 +48,11 @@ export default {
     width: 100%;
     height: 100%;
     position: relative;
-    background-color: #ddd;
-    border-radius: 10px;
-    box-shadow: 2px 2px 10px #999;
+    border-radius: 4px;
+    box-shadow: 0 2px 6px 0 rgba(32, 45, 64, 0.08);
+    border: 1px solid #dadfe6;
+    background: #fff;
+    border-top: 3px solid #adbacc;
     .title {
         font-size: 15px;
         text-align: left;

@@ -1,7 +1,12 @@
 <template>
     <div class="container">
-        <cprocess ref="cprocess" width="300px" height="800px" :data="data" :option="option" />
-        <button @click="handleExport">导出</button>
+        <el-row>
+            <button @click="handleExport">导出</button>
+            <button @click="handleExport">导出</button>
+            <button @click="handleExport">导出</button>
+            <button @click="handleExport">导出</button>
+        </el-row>
+        <cprocess ref="cprocess" width="100%" height="800px" :data="data" :option="option" />
     </div>
 </template>
 
@@ -45,10 +50,78 @@ export default {
                     "zIndex": 1,
                     "data": {
                         "parent": true,
-                        batchIndex: 1
+                        "batchIndex": 1,
+                        "rePosition": true
                     },
                     "children": ["5c10a843-d330-4677-9bda-2e6cb2133746"],
                     "component": "Cgroup",
+                    ports: {
+                        groups: {
+                            in: {
+                                position: { name: 'left' },
+                            },
+                            out: {
+                                position: { name: 'right' },
+                            },
+                        },
+                        items: [
+                            { id: "in", group: "in" },
+                            { id: "out", group: "out" },
+                        ]
+                    },
+                    portMarkup: [
+                        {
+                            tagName: 'circle',
+                            selector: 'portBody',
+                            attrs: {
+                                r: 4,
+                                magnet: true,
+                                stroke: '#31d0c6',
+                                fill: '#fff',
+                                strokeWidth: 2,
+                            },
+                        },
+                    ],
+                },
+                {
+                    "position": { "x": 300, "y": 10 },
+                    "size": { "width": 280, "height": 120 },
+                    "shape": "vue-shape",
+                    "id": "e653f50b-33ce-4b20-ab9e-c7c9c5875e82",
+                    "zIndex": 1,
+                    "data": {
+                        "parent": true,
+                        "batchIndex": 1,
+                        "rePosition": true
+                    },
+                    "component": "Cgroup",
+                    ports: {
+                        groups: {
+                            in: {
+                                position: { name: 'left' },
+                            },
+                            out: {
+                                position: { name: 'right' },
+                            },
+                        },
+                        items: [
+                            { id: "in", group: "in" },
+                            { id: "out", group: "out" },
+                        ]
+                    },
+                    portMarkup: [
+                        {
+                            tagName: 'circle',
+                            selector: 'portBody',
+                            attrs: {
+                                r: 4,
+                                magnet: true,
+                                stroke: '#31d0c6',
+                                fill: '#fff',
+                                strokeWidth: 2,
+                            },
+                        },
+                    ],
                 },
                 {
                     "position": { "x": 20, "y": 50 },

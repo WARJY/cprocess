@@ -1,17 +1,20 @@
 <template>
     <div class="group-container">
-        <!-- <span class="title">第{{index}}批：</span> -->
+        <span class="title">第{{index}}批：</span>
         <!-- <collapse class="icon-collapse" :collapsed="collapsed" @collapse="handleCollapse" /> -->
+        <tool/>
     </div>
 </template>
 
 <script>
+import Tool from './Tool.vue'
 import Collapse from '@/components/cprocess/collapse.vue'
 
 export default {
     name: "Cgroup",
     components: {
-        Collapse
+        Collapse,
+        Tool
     },
     inject: ['getGraph', 'getNode'],
     data() {

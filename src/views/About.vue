@@ -1,20 +1,32 @@
 <template>
     <div class="container">
-        <button @click="addItem">addItem</button>
-        <button @click="addGroup">addGroup</button>
-        <div id="canvas" class="canvas"></div>
+        <cprocess ref="cprocess" width="300px" height="800px" :data="data" :option="option" />
+        <button @click="handleExport">导出</button>
     </div>
 </template>
 
 <script>
 import { Graph, Node, Edge, Shape, Addon } from '@antv/x6'
 import { debounce } from 'lodash'
+import Cprocess from '@/components/cprocess/index.vue'
 import data from './data.js'
+import Cgroup from './Cgroup.vue'
+import Cchildren from './Cchildren.vue'
 
 export default {
     name: "",
+    components: {
+        Cprocess
+    },
     data() {
         return {
+            data: {},
+            option: {
+                components: {
+                    Cgroup,
+                    Cchildren
+                }
+            }
             /* DATA APPEND FLAG, dont del this line */
         }
     },
@@ -22,7 +34,33 @@ export default {
         /* COMPUTED APPEND FLAG, dont del this line */
     },
     mounted() {
-        this.initBatch()
+        // this.initBatch()
+        this.data = {
+            "cells": [
+                {
+                    "position": { "x": 10, "y": 10 },
+                    "size": { "width": 280, "height": 120 },
+                    "shape": "vue-shape",
+                    "id": "e653f50b-33ce-4b20-ab9e-c7c9c5875e83",
+                    "zIndex": 1,
+                    "data": {
+                        "parent": true,
+                        batchIndex: 1
+                    },
+                    "children": ["5c10a843-d330-4677-9bda-2e6cb2133746"],
+                    "component": "Cgroup",
+                },
+                {
+                    "position": { "x": 20, "y": 50 },
+                    "size": { "width": 260, "height": 60 },
+                    "shape": "vue-shape",
+                    "id": "5c10a843-d330-4677-9bda-2e6cb2133746",
+                    "zIndex": 10,
+                    "parent": "e653f50b-33ce-4b20-ab9e-c7c9c5875e83",
+                    "component": "Cchildren",
+                }
+            ]
+        }
     },
     methods: {
         init() {
@@ -376,6 +414,9 @@ export default {
                     parent: true
                 }
             })
+        },
+        handleExport() {
+            this.$refs.cprocess.export()
         }
         /* METHOD APPEND FLAG, dont del this line */
     },

@@ -1,6 +1,6 @@
 <template>
     <div class="container">
-        <c-menu @action="handleAction" />
+        <c-menu v-bind="option.menu" @action="handleAction" />
         <div id="cprocess-canvas" class="canvas" :style="canvasStyle"></div>
     </div>
 </template>
@@ -190,55 +190,55 @@ export default {
             this.graph = graph
         },
         initEvent() {
-            this.graph.on('edge:mouseenter', ({ cell }) => {
-                cell.addTools([
-                    {
-                        name: 'source-arrowhead',
-                    },
-                    {
-                        name: 'button-remove',
-                    },
-                    {
-                        name: 'target-arrowhead',
-                        args: {
-                            attrs: {
-                                fill: 'red',
-                            },
+            this.graph.on('edge:mouseenter', this.handleEdgeMmouseenter)
+            this.graph.on('edge:mouseleave', this.handleEdgeMmouseLeave)
+            this.graph.on('node:selected', this.handleNodeSelected)
+            this.graph.on('node:unselected', this.handleNodeUnselected)
+            this.graph.on('tool:addAction', this.handleToolAddAction)
+        },
+        handleEdgeMmouseenter({ cell }) {
+            cell.addTools([
+                {
+                    name: 'source-arrowhead',
+                },
+                {
+                    name: 'button-remove',
+                },
+                {
+                    name: 'target-arrowhead',
+                    args: {
+                        attrs: {
+                            fill: 'red',
                         },
                     },
-                ])
-            })
-
-            this.graph.on('edge:mouseleave', ({ cell }) => {
-                cell.removeTools()
-            })
-
-            this.graph.on('node:selected', ({ cell }) => {
-                cell.addTools([
-                    { name: "boundary" },
-                    {
-                        name: 'button-remove',
-                        args: {
-                            x: "100%",
-                            offset: {
-                                x: 10,
-                                y: -10
-                            }
-                        },
-                    }
-                ])
-                this.$emit("node:selected", cell)
-            })
-
-            this.graph.on('node:unselected', ({ cell }) => {
-                cell.removeTools()
-            })
-
-            this.graph.on('tool:addAction', ({ cell, vm }) => {
-                console.log(vm)
-                this.handleAddAction(cell)
-                vm.rePosition(cell)
-            })
+                },
+            ])
+        },
+        handleEdgeMmouseLeave({ cell }) {
+            cell.removeTools()
+        },
+        handleNodeSelected({ cell }) {
+            cell.addTools([
+                { name: "boundary" },
+                {
+                    name: 'button-remove',
+                    args: {
+                        x: "100%",
+                        offset: {
+                            x: 10,
+                            y: -10
+                        }
+                    },
+                }
+            ])
+            this.$emit("node:selected", cell)
+        },
+        handleNodeUnselected({ cell }) {
+            cell.removeTools()
+        },
+        handleToolAddAction({ node }) {
+            let action = this.handleAddAction(node)
+            node.trigger("rePosition", { parent: node, child: action })
         },
         handleAction(type) {
             if (type === "addAction") this.handleAddAction()
@@ -250,10 +250,12 @@ export default {
             if (type === "zoomin") this.handleZoomIn()
             if (type === "zoomout") this.handleZoomOut()
         },
-        handleAddAction(target=this.graph) {
+        handleAddAction(target) {
             let template = JSON.parse(JSON.stringify(this.currentOption.action))
-            target.addNode(template)
+            let action = this.graph.addNode(template)
+            if (target) action.addTo(target)
             this.$emit("addAction")
+            return action
         },
         handleAddGroup() {
             let template = JSON.parse(JSON.stringify(this.currentOption.group))

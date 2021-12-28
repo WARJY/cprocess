@@ -2,13 +2,13 @@
     <div class="group-container">
         <!-- <span class="title">任务组{{name}}：</span> -->
         <!-- <collapse class="icon-collapse" :collapsed="collapsed" @collapse="handleCollapse" /> -->
-        <tool @toolAction="handleToolAction"/>
+        <tool @toolAction="handleToolAction" />
     </div>
 </template>
 
 <script>
 import Tool from './Tool.vue'
-import Collapse from '@/components/cprocess/collapse.vue'
+import Collapse from './collapse.vue'
 
 export default {
     name: "Cgroup",
@@ -29,11 +29,39 @@ export default {
     },
     mounted() {
         this.init()
+        this.initEvent()
     },
     methods: {
         init() {
             let node = this.getNode()
             this.name = node.data.name
+        },
+        initEvent() {
+            let node = this.getNode()
+            node.on("rePosition", ({ parent, child }) => {
+                if (parent !== node) return
+                if (parent.data.reSize === true) {
+                    let parentSize = parent.size()
+                    let childSize = child.size()
+                    if (parentSize.height < childSize.height * parent.children.length + 80) {
+                        parent.resize(parentSize.width, childSize.height * parent.children.length + 80)
+                    }
+                }
+                if (parent.data.rePosition === true) {
+                    let parentSize = parent.size()
+                    let parentPosition = parent.position()
+                    parent.children.sort((a, b) => {
+                        let aY = a.position().y
+                        let bY = b.position().y
+                        return aY - bY
+                    }).forEach((child, index) => {
+                        let childSize = child.size()
+                        let childX = parentPosition.x + (parentSize.width - childSize.width) / 2
+                        let childYPer = (parentSize.height - (childSize.height * parent._children.length)) / (parent._children.length + 1)
+                        child.position(childX, parentPosition.y + (childYPer + childSize.height) * index + childYPer)
+                    })
+                }
+            })
         },
         handleCollapse() {
             let graph = this.getGraph()

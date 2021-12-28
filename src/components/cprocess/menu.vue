@@ -11,6 +11,16 @@
 <script>
 export default {
     name: "",
+    props: {
+        addAction: {},
+        addGroup: {},
+        undo: {},
+        redo: {},
+        copy: {},
+        paste: {},
+        zoomin: {},
+        zoomout: {},
+    },
     data() {
         return {
             optionList: [
@@ -28,6 +38,13 @@ export default {
     },
     computed: {
         /* COMPUTED APPEND FLAG, dont del this line */
+    },
+    mounted(){
+        this.optionList = this.optionList.filter((item,index)=>{
+            let key = item.name
+            if(this[key] === false) return false
+            return true
+        })
     },
     methods: {
         handleClick(type){

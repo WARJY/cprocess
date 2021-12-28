@@ -7,7 +7,7 @@
 </template>
 
 <script>
-import Collapse from '@/components/cprocess/collapse.vue'
+import Collapse from './collapse.vue'
 import { debounce } from 'lodash'
 
 export default {
@@ -45,29 +45,10 @@ export default {
             graph.trigger("node:collapse", { node, vm: this })
         },
         rePosition(data) {
+            let node = this.getNode()
             if (!data.cell._parent) return
             let parent = data.cell._parent
-            if (parent.data.reSize === true) {
-                let parentSize = parent.size()
-                let childSize = data.cell.size()
-                if (parentSize.height < childSize.height * parent.children.length + 80) {
-                    parent.resize(parentSize.width, childSize.height * parent.children.length + 80)
-                }
-            }
-            if (parent.data.rePosition === true) {
-                let parentSize = parent.size()
-                let parentPosition = parent.position()
-                parent.children.sort((a, b) => {
-                    let aY = a.position().y
-                    let bY = b.position().y
-                    return aY - bY
-                }).forEach((child, index) => {
-                    let childSize = child.size()
-                    let childX = parentPosition.x + (parentSize.width - childSize.width) / 2
-                    let childYPer = (parentSize.height - (childSize.height * parent._children.length)) / (parent._children.length + 1)
-                    child.position(childX, parentPosition.y + (childYPer + childSize.height) * index + childYPer)
-                })
-            }
+            parent.trigger("rePosition", { parent: parent, child: node })
         }
         /* METHOD APPEND FLAG, dont del this line */
     },

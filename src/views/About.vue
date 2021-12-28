@@ -1,12 +1,6 @@
 <template>
     <div class="container">
-        <cprocess
-            ref="cprocess"
-            width="100%"
-            height="800px"
-            :data="data"
-            :option="option"
-        />
+        <cprocess ref="cprocess" width="100%" height="800px" :data="data" :option="option" />
     </div>
 </template>
 
@@ -21,7 +15,11 @@ export default {
     data() {
         return {
             data: {},
-            option: {}
+            option: {
+                menu: {
+                    addAction: false,
+                },
+            }
             /* DATA APPEND FLAG, dont del this line */
         }
     },

@@ -1,8 +1,8 @@
 <template>
     <div class="group-container">
-        <span class="title">第{{index}}批：</span>
+        <!-- <span class="title">任务组{{name}}：</span> -->
         <!-- <collapse class="icon-collapse" :collapsed="collapsed" @collapse="handleCollapse" /> -->
-        <tool/>
+        <tool @toolAction="handleToolAction"/>
     </div>
 </template>
 
@@ -19,7 +19,7 @@ export default {
     inject: ['getGraph', 'getNode'],
     data() {
         return {
-            index: 1,
+            name: 1,
             collapsed: false
             /* DATA APPEND FLAG, dont del this line */
         }
@@ -33,13 +33,18 @@ export default {
     methods: {
         init() {
             let node = this.getNode()
-            this.index = node.data.batchIndex
+            this.name = node.data.name
         },
         handleCollapse() {
             let graph = this.getGraph()
             let node = this.getNode()
             graph.trigger("node:collapse", { node, vm: this })
-        }
+        },
+        handleToolAction(type) {
+            let graph = this.getGraph()
+            let node = this.getNode()
+            graph.trigger(`tool:${type}`, { node, vm: this })
+        },
         /* METHOD APPEND FLAG, dont del this line */
     },
     /* OPTION APPEND FLAG, dont del this line */
@@ -61,10 +66,9 @@ export default {
         text-align: left;
         position: relative;
         left: 0;
-        background-color: #ddd;
         padding: 6px 12px;
-        position: absolute;
         font-weight: bold;
+        text-align: center;
     }
     .icon-collapse {
         position: absolute;

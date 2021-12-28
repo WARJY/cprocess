@@ -22,10 +22,9 @@ export default {
             this.$contextmenu({
                 items: [
                     {
-                        label: "返回(B)",
+                        label: "添加任务",
                         onClick: () => {
-                            this.message = "返回(B)";
-                            console.log("返回(B)");
+                            this.$emit("toolAction", "addAction")
                         }
                     },
                 ],

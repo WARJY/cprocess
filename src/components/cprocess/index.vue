@@ -1,15 +1,28 @@
 <template>
     <div class="container">
-        <div id="canvas" class="canvas" :style="canvasStyle"></div>
+        <c-menu @action="handleAction" />
+        <div id="cprocess-canvas" class="canvas" :style="canvasStyle"></div>
     </div>
 </template>
 
 <script>
-import { Graph, Node, Edge, Shape, Addon } from '@antv/x6'
 import '@antv/x6-vue-shape'
+import CMenu from './menu.vue'
+import Cgroup from '../cprocess-tmp/Cgroup.vue'
+import Cchildren from '../cprocess-tmp/Cchildren.vue'
+import { group, action } from '../cprocess-tmp/shape.js'
+import { Graph, Node, Edge, Shape, Addon } from '@antv/x6'
+import { merge } from 'lodash'
+
+let uid = 0
 
 export default {
     name: "Cprocess",
+    components: {
+        CMenu,
+        Cgroup,
+        Cchildren
+    },
     props: {
         type: {
             type: String,
@@ -29,13 +42,19 @@ export default {
         },
         option: {
             type: Object,
-            default: () => {
-                components: { }
-            }
+            default: () => { }
         }
     },
     data() {
         return {
+            currentOption: {
+                group: JSON.parse(JSON.stringify(group)),
+                action: JSON.parse(JSON.stringify(action)),
+                components: {
+                    Cgroup,
+                    Cchildren
+                }
+            }
             /* DATA APPEND FLAG, dont del this line */
         }
     },
@@ -54,19 +73,30 @@ export default {
             immediate: true,
             handler(val, old) {
                 if (!val) return
-                this.setData(val)
+                // this.setData(val)
             }
         }
     },
     mounted() {
+        this.initOption()
         this.registCpt()
         this.init()
+        this.initEvent()
     },
     methods: {
+        initOption() {
+            merge(this.currentOption, this.option)
+            let container = document.getElementById("cprocess-canvas")
+            let { offsetWidth, offsetHeight } = container
+            this.currentOption.group.x = offsetWidth / 2
+            this.currentOption.group.y = offsetHeight / 2
+            this.currentOption.action.x = offsetWidth / 2
+            this.currentOption.action.y = offsetHeight / 2
+        },
         registCpt() {
-            if (!this.option.components) return
-            Object.keys(this.option.components).forEach((key, index) => {
-                let cpt = this.option.components[key]
+            if (!this.currentOption.components) return
+            Object.keys(this.currentOption.components).forEach((key, index) => {
+                let cpt = this.currentOption.components[key]
                 let name = cpt.name
                 Graph.registerVueComponent(
                     name,
@@ -81,13 +111,34 @@ export default {
             })
         },
         init() {
-            // 初始化画布
             const graph = new Graph({
-                container: document.getElementById('canvas'),
+                container: document.getElementById('cprocess-canvas'),
                 async: true,
                 interacting: true,
                 sorting: 'approx',
-                grid: true,
+                panning: {
+                    enabled: true,
+                    eventTypes: ['rightMouseDown']
+                },
+                grid: {
+                    size: 10,
+                    visible: true,
+                },
+                keyboard: {
+                    enabled: true,
+                },
+                clipboard: {
+                    enabled: true,
+                },
+                resizing: {
+                    enabled(node) {
+                        return node?.data?.parent === true
+                    }
+                },
+                mousewheel: {
+                    enabled: true,
+                    modifiers: ['ctrl', 'meta'],
+                },
                 translating: {
                     restrict: true,
                 },
@@ -111,17 +162,9 @@ export default {
                             direction: 'H',
                         },
                     },
-                    validateConnection({ sourceMagnet, targetMagnet }) {
-                        // 只能从输出链接桩创建连接
-                        if (!sourceMagnet || sourceMagnet.getAttribute('port-group') === 'in') {
-                            return false
-                        }
-
-                        // 只能连接到输入链接桩
-                        if (!targetMagnet || targetMagnet.getAttribute('port-group') !== 'in') {
-                            return false
-                        }
-
+                    validateConnection({ sourceMagnet, targetMagnet, targetCell }) {
+                        if (!sourceMagnet || sourceMagnet.getAttribute('port-group') === 'in') return false
+                        if (!targetMagnet || targetMagnet.getAttribute('port-group') !== 'in') return false
                         return true
                     },
                 },
@@ -145,12 +188,9 @@ export default {
                 },
             })
             this.graph = graph
-
-            graph.on('node:collapse', ({ node, vm }) => {
-                vm.collapsed = true
-            })
-
-            graph.on('edge:mouseenter', ({ cell }) => {
+        },
+        initEvent() {
+            this.graph.on('edge:mouseenter', ({ cell }) => {
                 cell.addTools([
                     {
                         name: 'source-arrowhead',
@@ -169,11 +209,11 @@ export default {
                 ])
             })
 
-            graph.on('edge:mouseleave', ({ cell }) => {
+            this.graph.on('edge:mouseleave', ({ cell }) => {
                 cell.removeTools()
             })
 
-            graph.on('node:selected', ({ cell }) => {
+            this.graph.on('node:selected', ({ cell }) => {
                 cell.addTools([
                     { name: "boundary" },
                     {
@@ -187,18 +227,71 @@ export default {
                         },
                     }
                 ])
+                this.$emit("node:selected", cell)
             })
 
-            graph.on('node:unselected', ({ cell }) => {
+            this.graph.on('node:unselected', ({ cell }) => {
                 cell.removeTools()
             })
+
+            this.graph.on('tool:addAction', ({ cell, vm }) => {
+                console.log(vm)
+                this.handleAddAction(cell)
+                vm.rePosition(cell)
+            })
         },
-        setData(data) {
+        handleAction(type) {
+            if (type === "addAction") this.handleAddAction()
+            if (type === "addGroup") this.handleAddGroup()
+            if (type === "undo") this.handleUndo()
+            if (type === "redo") this.handleRedo()
+            if (type === "copy") this.handleCopy()
+            if (type === "paste") this.handlePaste()
+            if (type === "zoomin") this.handleZoomIn()
+            if (type === "zoomout") this.handleZoomOut()
+        },
+        handleAddAction(target=this.graph) {
+            let template = JSON.parse(JSON.stringify(this.currentOption.action))
+            target.addNode(template)
+            this.$emit("addAction")
+        },
+        handleAddGroup() {
+            let template = JSON.parse(JSON.stringify(this.currentOption.group))
+            this.graph.addNode(template)
+            this.$emit("addGroup")
+        },
+        handleUndo() {
+            this.graph.undo()
+        },
+        handleRedo() {
+            this.graph.redo()
+        },
+        handleCopy() {
+            let cells = this.graph.getSelectedCells()
+            this.graph.copy(cells)
+        },
+        handlePaste() {
+            const cells = this.graph.paste()
+            this.graph.cleanSelection()
+            this.graph.select(cells)
+        },
+        handleZoomIn() {
+            let zoom = this.graph.zoom()
+            this.graph.zoomTo(zoom + 0.2)
+        },
+        handleZoomOut() {
+            let zoom = this.graph.zoom()
+            this.graph.zoomTo(zoom - 0.2)
+        },
+        setData(cell, data) {
+            cell.setData(data)
+        },
+        setJSONData(data) {
             if (!this.graph || !data) return
             this.graph.fromJSON(data)
         },
         export() {
-            console.log(JSON.stringify(this.graph.toJSON()))
+            return this.graph.toJSON()
         }
         /* METHOD APPEND FLAG, dont del this line */
     },

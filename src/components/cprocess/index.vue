@@ -1,7 +1,14 @@
 <template>
     <div class="container">
-        <c-menu v-bind="option.menu" @action="handleAction" />
-        <div id="cprocess-canvas" class="canvas" :style="canvasStyle"></div>
+        <c-menu
+            v-bind="option.menu"
+            @action="handleAction"
+        />
+        <div
+            id="cprocess-canvas"
+            class="canvas"
+            :style="canvasStyle"
+        ></div>
     </div>
 </template>
 
@@ -10,7 +17,7 @@ import '@antv/x6-vue-shape'
 import CMenu from './menu.vue'
 import Cgroup from '../cprocess-tmp/Cgroup.vue'
 import Cchildren from '../cprocess-tmp/Cchildren.vue'
-import { group, action } from '../cprocess-tmp/shape.js'
+import { group, action, start, end } from '../cprocess-tmp/shape.js'
 import { Graph, Node, Edge, Shape, Addon } from '@antv/x6'
 import { merge } from 'lodash'
 
@@ -20,8 +27,6 @@ export default {
     name: "Cprocess",
     components: {
         CMenu,
-        Cgroup,
-        Cchildren
     },
     props: {
         type: {
@@ -81,7 +86,9 @@ export default {
         this.initOption()
         this.registCpt()
         this.init()
+        this.initPoint()
         this.initEvent()
+        this.initKeyboard()
     },
     methods: {
         initOption() {
@@ -126,6 +133,7 @@ export default {
                 },
                 keyboard: {
                     enabled: true,
+                    global: true
                 },
                 clipboard: {
                     enabled: true,
@@ -175,7 +183,8 @@ export default {
                     enabled: true,
                     findParent({ node }) {
                         const bbox = node.getBBox()
-                        return this.getNodes().filter((node) => {
+                        if (node.data?.parent === true) return []
+                        return this.getNodes()?.filter((node) => {
                             // 只有 data.parent 为 true 的节点才是父节点
                             const data = node.getData()
                             if (data && data.parent) {
@@ -189,12 +198,37 @@ export default {
             })
             this.graph = graph
         },
+        initPoint() {
+            let { offsetWidth, offsetHeight } = document.getElementById("cprocess-canvas")
+            console.log(start)
+            this.graph.addNode({
+                ...start,
+                x: 20,
+                y: offsetHeight / 2 - 50
+            })
+            this.graph.addNode({
+                ...end,
+                x: offsetWidth - 120,
+                y: offsetHeight / 2 - 50
+            })
+        },
         initEvent() {
-            this.graph.on('edge:mouseenter', this.handleEdgeMmouseenter)
-            this.graph.on('edge:mouseleave', this.handleEdgeMmouseLeave)
+            this.graph.on('edge:selected', this.handleEdgeMmouseenter)
+            this.graph.on('edge:unselected', this.handleEdgeMmouseLeave)
             this.graph.on('node:selected', this.handleNodeSelected)
             this.graph.on('node:unselected', this.handleNodeUnselected)
+
             this.graph.on('tool:addAction', this.handleToolAddAction)
+            this.graph.on('tool:addGroupRow', this.handleToolAddGroupRow)
+            this.graph.on('tool:addGroupCol', this.handleToolAddGroupCol)
+            this.graph.on('tool:setAction', this.handleSetAction)
+        },
+        initKeyboard() {
+            this.graph.bindKey('ctrl+c', this.handleCopy)
+            this.graph.bindKey('ctrl+v', this.handlePaste)
+            this.graph.bindKey('ctrl+z', this.handleUndo)
+            this.graph.bindKey('ctrl+y', this.handleRndo)
+            this.graph.bindKey('del', this.handleRemove)
         },
         handleEdgeMmouseenter({ cell }) {
             cell.addTools([
@@ -213,24 +247,28 @@ export default {
                     },
                 },
             ])
+            this.$emit("edge:selected", cell)
         },
         handleEdgeMmouseLeave({ cell }) {
             cell.removeTools()
+            this.$emit("edge:unselected", cell)
         },
         handleNodeSelected({ cell }) {
-            cell.addTools([
-                { name: "boundary" },
-                {
-                    name: 'button-remove',
-                    args: {
-                        x: "100%",
-                        offset: {
-                            x: 10,
-                            y: -10
-                        }
-                    },
-                }
-            ])
+            cell.addTools([{ name: "boundary" }])
+            if (cell.data?.type !== "start" && cell.data?.type !== "end") {
+                cell.addTools([
+                    {
+                        name: 'button-remove',
+                        args: {
+                            x: "100%",
+                            offset: {
+                                x: 10,
+                                y: -10
+                            }
+                        },
+                    }
+                ])
+            }
             this.$emit("node:selected", cell)
         },
         handleNodeUnselected({ cell }) {
@@ -239,6 +277,73 @@ export default {
         handleToolAddAction({ node }) {
             let action = this.handleAddAction(node)
             node.trigger("rePosition", { parent: node, child: action })
+        },
+        handleToolAddGroupRow({ node }) {
+            let group = this.handleAddGroup()
+            let groupX = 0
+            let groupY = 0
+
+            let nodePosition = node.position()
+            groupX = nodePosition.x + 400
+            groupY = nodePosition.y
+
+            let edges = this.graph.getConnectedEdges(node).filter((item, index) => {
+                return item.source.cell === node.id
+            })
+            if (edges.length > 0) {
+                let edgeNodes = edges.map((item, index) => {
+                    return this.graph.getCellById(item.target.cell)
+                }).sort((a, b) => {
+                    let aPosition = a.position()
+                    let bPosition = b.position()
+                    return aPosition.y - bPosition.y
+                })
+                let last = edgeNodes[edgeNodes.length - 1]
+                groupY = last.position().y + 150
+            }
+
+            group.position(groupX, groupY)
+            const edge = new Shape.Edge({
+                source: { cell: node.id, port: 'out' },
+                target: { cell: group.id, port: 'in' },
+            })
+            this.graph.addEdge(edge)
+        },
+        handleToolAddGroupCol({ node }) {
+            let group = this.handleAddGroup()
+            let groupX = 0
+            let groupY = 0
+
+            let nodePosition = node.position()
+            groupX = nodePosition.x
+            groupY = nodePosition.y + 150
+            group.position(groupX, groupY)
+
+            let edges = this.graph.getIncomingEdges(node)
+            let source = edges[0]
+            if (source) {
+                let sourceNode = this.graph.getCellById(source.source.cell)
+                let targetEdges = this.graph.getOutgoingEdges(sourceNode)
+                let targetNodes = targetEdges.map((item, index) => {
+                    return this.graph.getCellById(item.target.cell)
+                }).sort((a, b) => {
+                    let aPosition = a.position()
+                    let bPosition = b.position()
+                    return aPosition.y - bPosition.y
+                })
+                let last = targetNodes[targetNodes.length - 1]
+                group.position(groupX, last.position().y + 150)
+
+                const edge = new Shape.Edge({
+                    source: { cell: sourceNode.id, port: 'out' },
+                    target: { cell: group.id, port: 'in' },
+                })
+                this.graph.addEdge(edge)
+            }
+        },
+        handleSetAction({ node }) {
+            this.graph.select([node])
+            this.$emit("tool:setAction", node)
         },
         handleAction(type) {
             if (type === "addAction") this.handleAddAction()
@@ -259,8 +364,9 @@ export default {
         },
         handleAddGroup() {
             let template = JSON.parse(JSON.stringify(this.currentOption.group))
-            this.graph.addNode(template)
+            let group = this.graph.addNode(template)
             this.$emit("addGroup")
+            return group
         },
         handleUndo() {
             this.graph.undo()
@@ -270,12 +376,36 @@ export default {
         },
         handleCopy() {
             let cells = this.graph.getSelectedCells()
+            cells = cells.filter((item, index) => {
+                return item.data?.type !== "start" && item.data?.type !== "end"
+            })
+
+            let pasteTarget = ""
+            let firstParent = cells[0]?.parent
+            if (firstParent && firstParent !== null) {
+                let every = cells.every((cell, index) => {
+                    return cell.parent === firstParent
+                })
+                if (every) pasteTarget = firstParent
+            }
+            this.pasteTarget = pasteTarget
+
             this.graph.copy(cells)
         },
         handlePaste() {
             const cells = this.graph.paste()
             this.graph.cleanSelection()
             this.graph.select(cells)
+            if (this.pasteTarget) {
+                cells.forEach((cell, index) => {
+                    this.pasteTarget.embed(cell)
+                })
+                this.pasteTarget.trigger("rePosition", { parent: this.pasteTarget, child: cells[0] })
+            }
+        },
+        handleRemove() {
+            let cells = this.graph.getSelectedCells()
+            this.graph.removeCells(cells)
         },
         handleZoomIn() {
             let zoom = this.graph.zoom()

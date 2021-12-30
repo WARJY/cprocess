@@ -25,7 +25,7 @@ export default {
         return {
             optionList: [
                 { name: "addAction", label: "添加任务", icon: "el-icon-plus" },
-                { name: "addGroup", label: "添加任务组", icon: "el-icon-folder-add" },
+                { name: "addGroup", label: "添加批次", icon: "el-icon-folder-add" },
                 { name: "undo", label: "撤销", icon: "el-icon-refresh-left" },
                 { name: "redo", label: "重做", icon: "el-icon-refresh-right" },
                 { name: "copy", label: "复制", icon: "el-icon-copy-document" },
@@ -56,7 +56,7 @@ export default {
 }
 </script>
 
-<style lang="scss" scoped>
+<style lang="stylus" scoped>
 .menu-container {
     width: 100%;
     background-color: #f5f5f5;

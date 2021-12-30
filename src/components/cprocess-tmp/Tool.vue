@@ -1,5 +1,8 @@
 <template>
-    <div class="tool-container" @contextmenu.prevent="onContextmenu"></div>
+    <div
+        class="tool-container"
+        @contextmenu.prevent="onContextmenu"
+    ></div>
 </template>
 
 <script>
@@ -9,8 +12,42 @@ Vue.use(Contextmenu)
 
 export default {
     name: "",
+    props: {
+        type: {
+            type: String,
+            default: () => "group"
+        }
+    },
     data() {
         return {
+            groupMenu: [
+                {
+                    label: "添加任务",
+                    onClick: () => {
+                        this.$emit("toolAction", "addAction")
+                    }
+                },
+                {
+                    label: "添加串行批次",
+                    onClick: () => {
+                        this.$emit("toolAction", "addGroupRow")
+                    }
+                },
+                {
+                    label: "添加并行批次",
+                    onClick: () => {
+                        this.$emit("toolAction", "addGroupCol")
+                    }
+                },
+            ],
+            childrenMenu: [
+                {
+                    label: "配置",
+                    onClick: () => {
+                        this.$emit("toolAction", "setAction")
+                    }
+                }
+            ]
             /* DATA APPEND FLAG, dont del this line */
         }
     },
@@ -20,14 +57,7 @@ export default {
     methods: {
         onContextmenu(event) {
             this.$contextmenu({
-                items: [
-                    {
-                        label: "添加任务",
-                        onClick: () => {
-                            this.$emit("toolAction", "addAction")
-                        }
-                    },
-                ],
+                items: this.type === "group" ? this.groupMenu : this.childrenMenu,
                 event,
                 customClass: "custom-class",
                 zIndex: 3,
@@ -41,7 +71,7 @@ export default {
 }
 </script>
 
-<style lang="scss" scoped>
+<style lang="stylus" scoped>
 .tool-container {
     width: 100%;
     height: 100%;

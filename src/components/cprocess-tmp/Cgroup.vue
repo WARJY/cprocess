@@ -8,12 +8,12 @@
 
 <script>
 import Tool from './Tool.vue'
-import Collapse from './collapse.vue'
+// import Collapse from './collapse.vue'
 
 export default {
     name: "Cgroup",
     components: {
-        Collapse,
+        // Collapse,
         Tool
     },
     inject: ['getGraph', 'getNode'],
@@ -34,11 +34,15 @@ export default {
     methods: {
         init() {
             let node = this.getNode()
-            this.name = node.data.name
+            this.name = node.data?.name
         },
         initEvent() {
             let node = this.getNode()
-            node.on("rePosition", ({ parent, child }) => {
+            node.on("rePosition", this.handleReposition)
+        },
+        handleReposition({ parent, child }) {
+            setTimeout(() => {
+                let node = this.getNode()
                 if (parent !== node) return
                 if (parent.data.reSize === true) {
                     let parentSize = parent.size()
@@ -61,17 +65,17 @@ export default {
                         child.position(childX, parentPosition.y + (childYPer + childSize.height) * index + childYPer)
                     })
                 }
-            })
-        },
-        handleCollapse() {
-            let graph = this.getGraph()
-            let node = this.getNode()
-            graph.trigger("node:collapse", { node, vm: this })
+            }, 100)
         },
         handleToolAction(type) {
             let graph = this.getGraph()
             let node = this.getNode()
             graph.trigger(`tool:${type}`, { node, vm: this })
+        },
+        handleCollapse() {
+            let graph = this.getGraph()
+            let node = this.getNode()
+            graph.trigger("node:collapse", { node, vm: this })
         },
         /* METHOD APPEND FLAG, dont del this line */
     },
@@ -79,7 +83,7 @@ export default {
 }
 </script>
 
-<style lang="scss" scoped>
+<style lang="stylus" scoped>
 .group-container {
     width: 100%;
     height: 100%;
@@ -89,6 +93,7 @@ export default {
     border: 1px solid #dadfe6;
     background: #fff;
     border-top: 3px solid #adbacc;
+
     .title {
         font-size: 15px;
         text-align: left;
@@ -98,6 +103,7 @@ export default {
         font-weight: bold;
         text-align: center;
     }
+
     .icon-collapse {
         position: absolute;
         right: 8px;

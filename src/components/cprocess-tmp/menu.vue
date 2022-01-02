@@ -5,12 +5,24 @@
                 <i :class="item.icon" />
             </div>
         </el-tooltip>
+        <div style="flex:1"></div>
+        <el-tooltip content="使用指南">
+            <div class="menu-item" @click="handleClick('guide')">
+                <i class="el-icon-question" />
+            </div>
+        </el-tooltip>
+        <guide ref="guide" />
     </el-row>
 </template>
 
 <script>
+import Guide from './guide.vue'
+
 export default {
     name: "",
+    components: {
+        Guide
+    },
     props: {
         addAction: {},
         addGroup: {},
@@ -32,23 +44,25 @@ export default {
                 { name: "paste", label: "粘贴", icon: "el-icon-document-copy" },
                 { name: "zoomin", label: "放大", icon: "el-icon-zoom-in" },
                 { name: "zoomout", label: "缩小", icon: "el-icon-zoom-out" },
-            ]
+            ],
+            guideDialogVisible: false
             /* DATA APPEND FLAG, dont del this line */
         }
     },
     computed: {
         /* COMPUTED APPEND FLAG, dont del this line */
     },
-    mounted(){
-        this.optionList = this.optionList.filter((item,index)=>{
+    mounted() {
+        this.optionList = this.optionList.filter((item, index) => {
             let key = item.name
-            if(this[key] === false) return false
+            if (this[key] === false) return false
             return true
         })
     },
     methods: {
-        handleClick(type){
+        handleClick(type) {
             this.$emit("action", type)
+            if (type === "guide") this.$refs.guide.toggle()
         }
         /* METHOD APPEND FLAG, dont del this line */
     },
@@ -56,7 +70,7 @@ export default {
 }
 </script>
 
-<style lang="stylus" scoped>
+<style lang="scss" scoped>
 .menu-container {
     width: 100%;
     background-color: #f5f5f5;

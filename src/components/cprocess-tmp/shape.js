@@ -3,6 +3,7 @@ export const group = {
     shape: "vue-shape",
     zIndex: 1,
     data: {
+        type: "group",
         parent: true,
         rePosition: true,
         reSize: true
@@ -42,6 +43,9 @@ export const action = {
     shape: "vue-shape",
     zIndex: 10,
     component: "Cchildren",
+    data: {
+        type: "action"
+    }
 }
 
 export const start = {

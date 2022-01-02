@@ -1,27 +1,20 @@
 <template>
     <div class="container">
-        <c-menu
-            v-bind="option.menu"
-            @action="handleAction"
-        />
-        <div
-            id="cprocess-canvas"
-            class="canvas"
-            :style="canvasStyle"
-        ></div>
+        <c-menu v-bind="menuOption" @action="handleAction" />
+        <div id="cprocess-canvas" class="canvas" :style="canvasStyle"></div>
     </div>
 </template>
 
 <script>
 import '@antv/x6-vue-shape'
-import CMenu from './menu.vue'
+import CMenu from '../cprocess-tmp/menu.vue'
 import Cgroup from '../cprocess-tmp/Cgroup.vue'
 import Cchildren from '../cprocess-tmp/Cchildren.vue'
 import { group, action, start, end } from '../cprocess-tmp/shape.js'
-import { Graph, Node, Edge, Shape, Addon } from '@antv/x6'
+import { Graph, Shape } from '@antv/x6'
 import { merge } from 'lodash'
 
-let uid = 0
+let name = 1
 
 export default {
     name: "Cprocess",
@@ -52,74 +45,15 @@ export default {
     },
     data() {
         return {
-            currentOption: {
+            nodeOption: {
                 group: JSON.parse(JSON.stringify(group)),
                 action: JSON.parse(JSON.stringify(action)),
                 components: {
                     Cgroup,
                     Cchildren
                 }
-            }
-            /* DATA APPEND FLAG, dont del this line */
-        }
-    },
-    computed: {
-        canvasStyle() {
-            return {
-                width: this.width,
-                height: this.height
-            }
-        }
-        /* COMPUTED APPEND FLAG, dont del this line */
-    },
-    watch: {
-        data: {
-            deep: true,
-            immediate: true,
-            handler(val, old) {
-                if (!val) return
-                // this.setData(val)
-            }
-        }
-    },
-    mounted() {
-        this.initOption()
-        this.registCpt()
-        this.init()
-        this.initPoint()
-        this.initEvent()
-        this.initKeyboard()
-    },
-    methods: {
-        initOption() {
-            merge(this.currentOption, this.option)
-            let container = document.getElementById("cprocess-canvas")
-            let { offsetWidth, offsetHeight } = container
-            this.currentOption.group.x = offsetWidth / 2
-            this.currentOption.group.y = offsetHeight / 2
-            this.currentOption.action.x = offsetWidth / 2
-            this.currentOption.action.y = offsetHeight / 2
-        },
-        registCpt() {
-            if (!this.currentOption.components) return
-            Object.keys(this.currentOption.components).forEach((key, index) => {
-                let cpt = this.currentOption.components[key]
-                let name = cpt.name
-                Graph.registerVueComponent(
-                    name,
-                    {
-                        template: `<${name}></${name}>`,
-                        components: {
-                            [name]: cpt,
-                        },
-                    },
-                    true
-                );
-            })
-        },
-        init() {
-            const graph = new Graph({
-                container: document.getElementById('cprocess-canvas'),
+            },
+            graphOption: {
                 async: true,
                 interacting: true,
                 sorting: 'approx',
@@ -160,6 +94,7 @@ export default {
                     allowBlank: false,
                     allowLoop: false,
                     allowNode: false,
+                    highlight: true,
                     anchor: 'orth',
                     connector: 'rounded',
                     connectionPoint: 'boundary',
@@ -170,7 +105,38 @@ export default {
                             direction: 'H',
                         },
                     },
-                    validateConnection({ sourceMagnet, targetMagnet, targetCell }) {
+                    validateConnection: ({ sourceMagnet, sourceCell, targetMagnet, targetCell }) => {
+                        let nodeType = targetCell.data?.type
+                        let inEdges = this.graph.getConnectedEdges(targetCell, {
+                            incoming: true
+                        })
+                        // 结束阶段只有一个前置节点
+                        if (nodeType === "end" && inEdges.length > 0) return false
+
+                        if (nodeType === "group") {
+                            // 每个group只有一个前置节点
+                            if (inEdges.length > 0) return false
+
+                            // 并行的group中只能有一个出口
+                            let inSource = this.graph.getPredecessors(sourceCell, {
+                                distance: 1
+                            })
+                            if (inSource.length > 0) {
+                                let colActions = this.graph.getSuccessors(inSource[0], {
+                                    distance: 1
+                                }).filter((item, index) => {
+                                    return item.id !== sourceCell.id
+                                })
+                                let exit = false
+                                colActions.forEach((col, index) => {
+                                    let colSuccessors = this.graph.getSuccessors(col, {
+                                        distance: 1
+                                    })
+                                    if (colSuccessors.length > 0) exit = true
+                                })
+                                if (exit === true) return false
+                            }
+                        }
                         if (!sourceMagnet || sourceMagnet.getAttribute('port-group') === 'in') return false
                         if (!targetMagnet || targetMagnet.getAttribute('port-group') !== 'in') return false
                         return true
@@ -178,6 +144,9 @@ export default {
                 },
                 history: {
                     enabled: true,
+                    beforeAddCommand(event, args) {
+                        if (args.key === "tools") return false
+                    },
                 },
                 embedding: {
                     enabled: true,
@@ -195,18 +164,81 @@ export default {
                         })
                     }
                 },
+            }
+            /* DATA APPEND FLAG, dont del this line */
+        }
+    },
+    computed: {
+        canvasStyle() {
+            return {
+                width: this.width,
+                height: this.height
+            }
+        },
+        menuOption() {
+            return this.option?.menu || {}
+        }
+        /* COMPUTED APPEND FLAG, dont del this line */
+    },
+    watch: {
+        data: {
+            deep: true,
+            immediate: true,
+            handler(val, old) {
+                if (!val) return
+            }
+        }
+    },
+    mounted() {
+        this.initOption()
+        this.registCpt()
+        this.init()
+        this.initPoint()
+        this.initEvent()
+        this.initKeyboard()
+    },
+    methods: {
+        initOption() {
+            merge(this.nodeOption, this.option?.node)
+            merge(this.graphOption, this.option?.graph)
+
+            this.nodeOption.group.x = 100
+            this.nodeOption.group.y = 100
+            this.nodeOption.action.x = 100
+            this.nodeOption.action.y = 100
+        },
+        registCpt() {
+            if (!this.nodeOption.components) return
+            Object.keys(this.nodeOption.components).forEach((key, index) => {
+                let cpt = this.nodeOption.components[key]
+                let name = cpt.name
+                Graph.registerVueComponent(
+                    name,
+                    {
+                        template: `<${name}></${name}>`,
+                        components: {
+                            [name]: cpt,
+                        },
+                    },
+                    true
+                );
+            })
+        },
+        init() {
+            const graph = new Graph({
+                ...this.graphOption,
+                container: document.getElementById('cprocess-canvas'),
             })
             this.graph = graph
         },
         initPoint() {
             let { offsetWidth, offsetHeight } = document.getElementById("cprocess-canvas")
-            console.log(start)
-            this.graph.addNode({
+            this.startNode = this.graph.addNode({
                 ...start,
                 x: 20,
                 y: offsetHeight / 2 - 50
             })
-            this.graph.addNode({
+            this.endNode = this.graph.addNode({
                 ...end,
                 x: offsetWidth - 120,
                 y: offsetHeight / 2 - 50
@@ -227,7 +259,7 @@ export default {
             this.graph.bindKey('ctrl+c', this.handleCopy)
             this.graph.bindKey('ctrl+v', this.handlePaste)
             this.graph.bindKey('ctrl+z', this.handleUndo)
-            this.graph.bindKey('ctrl+y', this.handleRndo)
+            this.graph.bindKey('ctrl+y', this.handleRedo)
             this.graph.bindKey('del', this.handleRemove)
         },
         handleEdgeMmouseenter({ cell }) {
@@ -320,8 +352,8 @@ export default {
             group.position(groupX, groupY)
 
             let edges = this.graph.getIncomingEdges(node)
-            let source = edges[0]
-            if (source) {
+            if (edges.length > 0) {
+                let source = edges[0]
                 let sourceNode = this.graph.getCellById(source.source.cell)
                 let targetEdges = this.graph.getOutgoingEdges(sourceNode)
                 let targetNodes = targetEdges.map((item, index) => {
@@ -356,14 +388,18 @@ export default {
             if (type === "zoomout") this.handleZoomOut()
         },
         handleAddAction(target) {
-            let template = JSON.parse(JSON.stringify(this.currentOption.action))
+            let template = JSON.parse(JSON.stringify(this.nodeOption.action))
+
+            template.data.name = name
+            name += 1
+
             let action = this.graph.addNode(template)
             if (target) action.addTo(target)
             this.$emit("addAction")
             return action
         },
         handleAddGroup() {
-            let template = JSON.parse(JSON.stringify(this.currentOption.group))
+            let template = JSON.parse(JSON.stringify(this.nodeOption.group))
             let group = this.graph.addNode(template)
             this.$emit("addGroup")
             return group
@@ -373,6 +409,7 @@ export default {
         },
         handleRedo() {
             this.graph.redo()
+            this.graph.cleanSelection()
         },
         handleCopy() {
             let cells = this.graph.getSelectedCells()
@@ -394,8 +431,8 @@ export default {
         },
         handlePaste() {
             const cells = this.graph.paste()
-            this.graph.cleanSelection()
             this.graph.select(cells)
+            this.graph.cleanSelection()
             if (this.pasteTarget) {
                 cells.forEach((cell, index) => {
                     this.pasteTarget.embed(cell)
@@ -405,6 +442,9 @@ export default {
         },
         handleRemove() {
             let cells = this.graph.getSelectedCells()
+            cells = cells.filter((item, index) => {
+                return !["start", "end"].includes(item.data?.type)
+            })
             this.graph.removeCells(cells)
         },
         handleZoomIn() {
@@ -415,6 +455,18 @@ export default {
             let zoom = this.graph.zoom()
             this.graph.zoomTo(zoom - 0.2)
         },
+        validate() {
+            let startNode = this.graph.getRootNodes().find((item, index) => {
+                return item.data?.type === "start"
+            })
+            let endNode = this.graph.getLeafNodes().find((item, index) => {
+                return item.data?.type === "end"
+            })
+            let flag = this.graph.isSuccessor(startNode, endNode, {
+                deep: true
+            })
+            return flag
+        },
         setData(cell, data) {
             cell.setData(data)
         },
@@ -422,8 +474,34 @@ export default {
             if (!this.graph || !data) return
             this.graph.fromJSON(data)
         },
-        export() {
+        export(array) {
+            if (array) return this.format()
             return this.graph.toJSON()
+        },
+        format() {
+            let startNode = this.graph.getRootNodes().find((item, index) => {
+                return item.data?.type === "start"
+            })
+
+            let result = []
+            let index = 1
+            let successors = this.graph.getSuccessors(startNode, {
+                distance: 1
+            })
+            while (successors.length > 0) {
+                if (successors.length === 1 && successors[0].data?.type === "end") return
+                result.push(successors)
+                let next = successors.find((item, index) => {
+                    return this.graph.getSuccessors(item, {
+                        distance: 1
+                    })?.length > 0
+                })
+                successors = this.graph.getSuccessors(next, {
+                    distance: index
+                })
+                index += 1
+            }
+            return result
         }
         /* METHOD APPEND FLAG, dont del this line */
     },

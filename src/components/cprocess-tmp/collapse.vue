@@ -32,7 +32,7 @@ export default {
 }
 </script>
 
-<style lang="stylus" scoped>
+<style lang="scss" scoped>
 .collapse-container{
     width: 16px;
     height: 16px;
